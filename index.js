@@ -1,48 +1,53 @@
 const express = require('express');
-const axios = require('axios');
 const cors = require('cors');
+const axios = require('axios');
+const bodyParser = require('body-parser');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
 app.post('/create-jira-ticket', async (req, res) => {
-  const { summary, priority, collectionName, link, userEmail } = req.body;
+    const { summary, description } = req.body;
 
-  const jiraUrl = `https://${process.env.REACT_APP_JIRA_DOMAIN}/rest/api/3/issue`;
-  const auth = Buffer.from(`${process.env.REACT_APP_JIRA_EMAIL}:${process.env.REACT_APP_JIRA_API_TOKEN}`).toString('base64');
+    const jiraDomain = process.env.REACT_APP_JIRA_DOMAIN;
+    const jiraEmail = process.env.REACT_APP_JIRA_EMAIL;
+    const jiraApiToken = process.env.REACT_APP_JIRA_API_TOKEN;
+    const jiraProjectKey = process.env.REACT_APP_JIRA_PROJECT_KEY;
 
-  const issueData = {
-    fields: {
-      project: {
-        key: process.env.REACT_APP_JIRA_PROJECT_KEY,
-      },
-      summary: summary,
-      description: `Priority: ${priority}\nCollection: ${collectionName}\nLink: ${link}\nCreated by: ${userEmail}`,
-      issuetype: {
-        name: 'Task',
-      },
-    },
-  };
+    const jiraUrl = `https://${jiraDomain}/rest/api/3/issue`;
 
-  try {
-    const response = await axios.post(jiraUrl, issueData, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const auth = Buffer.from(`${jiraEmail}:${jiraApiToken}`).toString('base64');
 
-    res.json(response.data); // Ensure response data contains `key` and `fields.status.name`
-  } catch (error) {
-    console.error('Error creating Jira ticket:', error);
-    res.status(500).json({ error: 'Failed to create Jira ticket' });
-  }
+    const issueData = {
+        fields: {
+            project: {
+                key: jiraProjectKey,
+            },
+            summary: summary,
+            description: description,
+            issuetype: {
+                name: 'Task',
+            },
+        },
+    };
+
+    try {
+        const response = await axios.post(jiraUrl, issueData, {
+            headers: {
+                Authorization: `Basic ${auth}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        res.status(200).send(response.data);
+    } catch (error) {
+        res.status(500).send({ error: error.message });
+    }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
 });
